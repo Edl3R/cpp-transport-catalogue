@@ -107,12 +107,17 @@ void InputReader::ParseLine(std::string_view line) {
 }
 
 void InputReader::ApplyCommands(TransportCatalogue& catalogue) const {
+    // добавление остановок
     for (const auto& command : commands_) {
         if (command.command == "Stop") {
-            // Обработка команды добавления остановки
             Coordinates coords = ParseCoordinates(command.description);
             catalogue.AddStop(command.id, coords);
-        } else if (command.command == "Bus") {
+        }
+    }
+
+    // добавление маршрутов
+    for (const auto& command : commands_) {
+        if (command.command == "Bus") {
             std::vector<std::string_view> stops_view = ParseRoute(command.description);
 
             std::vector<std::string> stops;
@@ -124,7 +129,7 @@ void InputReader::ApplyCommands(TransportCatalogue& catalogue) const {
 
             bool is_circular = (command.description.find('>') != command.description.npos);
             catalogue.AddBus(command.id, stops, is_circular);
-        } else {
+        } else if (command.command != "Stop") {
             std::cerr << "Unknown command: " << command.command << std::endl;
         }
     }
