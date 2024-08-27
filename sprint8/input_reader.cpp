@@ -125,11 +125,7 @@ namespace transport_catalogue {
         }
     }
 
-// Парсинг и применение команд
-    void InputReader::ApplyCommands(TransportCatalogue& catalogue) const {
-        std::vector<std::tuple<std::string, std::string, int>> distances;
-
-        //добавление остановок
+    void InputReader::ProcessStops(TransportCatalogue& catalogue, std::vector<std::tuple<std::string, std::string, int>>& distances) const {
         for (const auto& command : commands_) {
             if (command.command == "Stop") {
                 auto coords_end = command.description.find("m to ");
@@ -137,15 +133,14 @@ namespace transport_catalogue {
 
                 if (coords_end == std::string::npos) {
                     coords_str = command.description;
-                }
-                else {
+                } else {
                     coords_str = command.description.substr(0, command.description.rfind(',', coords_end));
                 }
 
                 coords_str = Trim(coords_str);
 
                 Stop stop{ command.id, ParseCoordinates(coords_str) };
-                catalogue.AddStop(stop);
+                catalogue.AddStop(stop.name, stop.coordinates);
 
                 if (coords_end != std::string::npos) {
                     std::regex regex(R"((\d+)m to ([^,]+))");
@@ -159,19 +154,30 @@ namespace transport_catalogue {
                 }
             }
         }
+    }
+    void InputReader::ProcessBuses(TransportCatalogue& catalogue) const {
+        for (const auto& command : commands_) {
+            if (command.command == "Bus") {
+                std::vector<std::string_view> stop_names = ParseRoute(command.description);
+                bool is_circular = command.description.find('>') != std::string::npos;
 
+                // Передаем название маршрута, список остановок и флаг кольцевого маршрута в метод AddBus
+                catalogue.AddBus(command.id, std::vector<std::string>(stop_names.begin(), stop_names.end()), is_circular);
+            }
+        }
+    }
+
+    void InputReader::ProcessDistances(TransportCatalogue& catalogue, const std::vector<std::tuple<std::string, std::string, int>>& distances) const {
         for (const auto& [from, to, dist] : distances) {
             catalogue.SetDistance(from, to, dist);
         }
+    }
 
-        for (const auto& command : commands_) {
-            if (command.command == "Bus") {
-                Bus bus{ command.id, {}, command.description.find('>') != std::string::npos };
-                auto stops = ParseRoute(command.description);
-                bus.stops.assign(stops.begin(), stops.end());
-                catalogue.AddBus(bus);
-            }
-        }
+    void InputReader::ApplyCommands(TransportCatalogue& catalogue) const {
+        std::vector<std::tuple<std::string, std::string, int>> distances;
+        ProcessStops(catalogue, distances);
+        ProcessDistances(catalogue, distances);
+        ProcessBuses(catalogue);
     }
 
 }
