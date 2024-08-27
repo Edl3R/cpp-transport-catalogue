@@ -5,6 +5,7 @@
 
 #include "geo.h"
 #include "transport_catalogue.h"
+
 namespace transport_catalogue {
 
     struct CommandDescription {
@@ -34,6 +35,21 @@ namespace transport_catalogue {
         void ApplyCommands(TransportCatalogue& catalogue) const;
 
     private:
+        /**
+         * Обрабатывает команды остановок и добавляет их в каталог
+         */
+        void ProcessStops(TransportCatalogue& catalogue, std::vector<std::tuple<std::string, std::string, int>>& distances) const;
+
+        /**
+         * Обрабатывает команды автобусов и добавляет их в каталог
+         */
+        void ProcessBuses(TransportCatalogue& catalogue) const;
+
+        /**
+         * Добавляет расстояния между остановками в каталог
+         */
+        void ProcessDistances(TransportCatalogue& catalogue, const std::vector<std::tuple<std::string, std::string, int>>& distances) const;
+
         std::vector<CommandDescription> commands_;
     };
 }
