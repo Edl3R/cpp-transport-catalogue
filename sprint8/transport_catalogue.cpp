@@ -8,20 +8,27 @@
 namespace transport_catalogue {
 
 // Добавление новой остановки
-    void TransportCatalogue::AddStop(const Stop& stop) {
-        stops_[stop.name] = stop;
-        stop_names_.push_back(stop.name);
+    void TransportCatalogue::AddStop(const std::string& name, Coordinates coordinates) {
+        // Создаем объект Stop и добавляем его в контейнер stops_
+        stops_[name] = {name, coordinates};
+        stop_names_.push_back(name);
     }
 
 // Добавление нового маршрута
-    void TransportCatalogue::AddBus(const Bus& bus) {
-        buses_[bus.name] = bus;
-        for (const auto& stop : bus.stops) {
-            auto stop_it = std::find(stop_names_.begin(), stop_names_.end(), stop);
-            if (stop_it != stop_names_.end()) {
-                buses_by_stop_[*stop_it].insert(bus.name);
+    void TransportCatalogue::AddBus(const std::string& name, const std::vector<std::string>& stop_names, bool is_circular) {
+        Bus new_bus;
+        new_bus.name = name;
+        new_bus.is_circular = is_circular;
+
+        for (const auto& stop_name : stop_names) {
+            const Stop* stop_ptr = FindStop(stop_name);
+            if (stop_ptr != nullptr) {
+                new_bus.stops.push_back(stop_ptr);
+                buses_by_stop_[stop_ptr->name].insert(name);
             }
         }
+
+        buses_[name] = std::move(new_bus);
     }
 
 
@@ -44,7 +51,7 @@ namespace transport_catalogue {
 
     }
 
-    const std::vector<std::string>& TransportCatalogue::GetBusStops(const std::string& bus_name) const {
+    const std::vector<const Stop*>& TransportCatalogue::GetBusStops(const std::string& bus_name) const {
         auto bus_it = buses_.find(bus_name);
         if (bus_it == buses_.end()) {
             throw std::out_of_range("Bus not found");
@@ -60,28 +67,26 @@ namespace transport_catalogue {
         }
 
         const auto& bus = bus_it->second;
-        std::unordered_set<std::string> unique_stops(bus.stops.begin(), bus.stops.end());
+        std::unordered_set<const Stop*> unique_stops(bus.stops.begin(), bus.stops.end());
         double total_length = 0;
         double geo_length = 0;
 
         for (size_t i = 0; i + 1 < bus.stops.size(); ++i) {
-            const auto& from = stops_.at(bus.stops[i]);
-            const auto& to = stops_.at(bus.stops[i + 1]);
+            const Stop* from = bus.stops[i];
+            const Stop* to = bus.stops[i + 1];
             try {
-                total_length += GetDistance(bus.stops[i], bus.stops[i + 1]);
+                total_length += GetDistance(from->name, to->name);
             }
             catch (const std::out_of_range&) {
 
             }
-            geo_length += ComputeDistance(from.coordinates, to.coordinates);
+            geo_length += ComputeDistance(from->coordinates, to->coordinates);
         }
 
         double curvature = geo_length > 0 ? total_length / geo_length : 0;
 
-
         return { static_cast<int>(bus.stops.size()), static_cast<int>(unique_stops.size()),
-                 total_length,
-                 curvature };
+                 total_length, curvature };
     }
 
 
@@ -102,8 +107,8 @@ namespace transport_catalogue {
         return buses;
     }
 
-    const Bus* TransportCatalogue::FindBus(const std::string& name) const {
-        auto it = buses_.find(name);
+    const Bus* TransportCatalogue::FindBus(const std::string_view& name) const {
+        auto it = buses_.find(std::string(name));
         if (it == buses_.end()) {
             return nullptr;
         }
