@@ -18,24 +18,24 @@ struct Stop {
 // Структура для представления маршрута
 struct Bus {
     std::string name;
-    std::vector<std::string> stops;
+    std::vector<const Stop*> stops;
     bool is_circular = false;       // Является ли маршрут кольцевым
 };
 
 // Класс транспортного каталога
 class TransportCatalogue {
 public:
-    void AddStop(const Stop& stop);
+    void AddStop(const std::string& name, Coordinates coordinates);
 
-    void AddBus(const Bus& bus);
+    void AddBus(const std::string& name, const std::vector<std::string>& stop_names, bool is_circular);
 
     void SetDistance(const std::string& from, const std::string& to, int distance);
 
     const Stop* FindStop(const std::string_view& name) const;
 
-    const Bus* FindBus(const std::string& name) const;
+    const Bus* FindBus(const std::string_view& name) const;
 
-    const std::vector<std::string>& GetBusStops(const std::string& bus_name) const;
+    const std::vector<const Stop*>& GetBusStops(const std::string& bus_name) const;
 
     std::vector<std::string> GetBusesByStop(const std::string& stop_name) const;
 
